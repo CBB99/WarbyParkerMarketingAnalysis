@@ -1,0 +1,110 @@
+ --select * 
+ --from quiz
+ --limit 5;
+
+-- Seeing how many users completed the survey questions
+-- 54% of users finished the survey
+ select question, count(user_id)
+ from survey
+ group by question;
+
+-- Percentages of completion dropped off at question 3(76% completed) and 5(54% completed)
+ select question,
+  (count(user_id) * 100) / 500
+from survey
+group by 1;
+
+-- Finding out if users were more likely to make a purchase if given 5 try-ons compare to 3 try-ons
+-- 371 users were given 5 try-ons and 379 users were given 3 try-ons
+select h.number_of_pairs, count(p.user_id)
+from home_try_on h
+join purchase p
+on h.user_id = p.user_id
+group by 1;
+
+select number_of_pairs, count(user_id)
+from home_try_on
+group by 1;
+
+-- Create a new table that shows the funnel of quiz to home try on to purchase
+select q.user_id,
+ h.user_id is not null as "is_home_try_on",
+ h.number_of_pairs,
+ p.user_id is not null as "is_purchase"
+from quiz q
+left join home_try_on h
+on q.user_id = h.user_id
+left join purchase p
+on h.user_id = p.user_id
+group by 1
+limit 10;
+
+with q as (
+  select '1-quiz' AS stage, count(distinct user_id)
+  from quiz
+),
+h as (
+  select '2-home-try-on' as stage, count(distinct user_id)
+  from home_try_on
+),
+p as (
+  select '3-purchase' as stage, count(distinct user_id)
+  from purchase
+)
+select *
+from q
+union all select *
+from h
+union all select *
+from p;
+
+-- Comparing the numbers of home try-on pairs to purchases
+with base_table as (
+  select distinct q.user_id,
+    h.user_id is not null as 'is_home_try_on',
+    h.number_of_pairs as 'AB_variant',
+    p.user_id is not null as 'is_purchase'
+    from quiz q
+    left join home_try_on h
+      on q.user_id = h.user_id
+    left join purchase p
+      on h.user_id = p.user_id
+)
+select ab_variant, 
+   sum(case when is_home_try_on = 1
+    then 1
+    else 0
+    end) 'home_trial',
+  sum(case when is_purchase = 1
+    then 1
+    else 0
+    end) 'purchase'
+from base_table
+group by AB_variant
+having home_trial > 0;
+
+-- Further exploration to see favorite styles and colors among customers
+select style, count(user_id) as style_quiz
+from quiz
+group by 1;
+
+select fit, count(user_id) as fit_quiz
+from quiz
+group by 1;
+
+select shape, count(user_id) as shape_quiz
+from quiz
+group by 1;
+
+select color, count(user_id) as color_quiz
+from quiz
+group by 1;
+
+select style, count(user_id) as purchase_style
+from purchase
+group by 1;
+
+select color, count(user_id) as
+purchase_color
+from purchase
+group by 1;
